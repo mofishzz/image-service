@@ -50,12 +50,14 @@ use crate::validator::Validator;
 #[macro_use]
 mod trace;
 mod builder;
+mod cas;
 mod core;
 mod inspect;
 mod merge;
 mod stat;
 mod unpack;
 mod validator;
+extern crate nydus_error;
 
 const BLOB_ID_MAXIMUM_LENGTH: usize = 255;
 
@@ -505,6 +507,26 @@ fn prepare_cmd_args(bti_string: String) -> ArgMatches<'static> {
                 .takes_value(true)
                 )
         )
+        .subcommand(
+            SubCommand::with_name("cas")
+            .about("cas")
+            .arg(
+                Arg::with_name("bootstrap")
+                    .long("bootstrap")
+                    .short("B")
+                    .help("path to nydus image's metadata blob (required)")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("output")
+                    .long("output")
+                    .short("O")
+                    .help("path to store nydus image's metadata blob (required)")
+                    .required(true)
+                    .takes_value(true),
+            )
+        )
         .arg(
             Arg::with_name("log-file")
                 .long("log-file")
@@ -565,6 +587,8 @@ fn main() -> Result<()> {
         Command::compact(matches, &build_info)
     } else if let Some(matches) = cmd.subcommand_matches("unpack") {
         Command::unpack(matches)
+    } else if let Some(matches) = cmd.subcommand_matches("cas") {
+        Command::cas(matches)
     } else {
         println!("{}", cmd.usage());
         Ok(())
@@ -711,6 +735,20 @@ impl Command {
             chunk_dict_path,
         )?;
         OutputSerializer::dump(matches, output, build_info)
+    }
+
+    fn cas(matches: &clap::ArgMatches) -> Result<()> {
+        let bootstrap_path = Self::get_bootstrap(matches)?;
+        let output_path = match matches.value_of("output") {
+            None => bail!("missing parameter `output`"),
+            Some(s) => Path::new(s),
+        };
+        cas::CAS_MGR.init("/var/cache/nydus-rs").map_err(|e| {
+            eprintln!("{:?}", e);
+            nydus_error::eother!(e)
+        })?;
+        cas::CAS_MGR.add_bootstrap(&bootstrap_path, &output_path);
+        Ok(())
     }
 
     fn compact(matches: &clap::ArgMatches, build_info: &BuildTimeInfo) -> Result<()> {

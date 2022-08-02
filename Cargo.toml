@@ -23,6 +23,7 @@ path = "src/lib.rs"
 
 [dependencies]
 rlimit = "0.8.3"
+rusqlite = { version = "0.28.0", features = ["bundled"] }
 log = "0.4.8"
 libc = "0.2"
 vmm-sys-util = "0.10.0"

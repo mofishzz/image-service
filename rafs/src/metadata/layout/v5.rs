@@ -33,6 +33,7 @@
 //! On the other hand, Rafs v4 is compatible with Rafs v5, so Rafs v5 implementation supports
 //! both v4 and v5 metadata.
 
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::convert::TryFrom;
 use std::ffi::{OsStr, OsString};
@@ -565,6 +566,25 @@ pub struct RafsV5BlobTable {
     pub extended: RafsV5ExtBlobTable,
 }
 
+impl From<Vec<Arc<BlobInfo>>> for RafsV5BlobTable {
+    fn from(entries: Vec<Arc<BlobInfo>>) -> RafsV5BlobTable {
+        let mut blob_table = RafsV5BlobTable {
+            entries,
+            extended: RafsV5ExtBlobTable::new(),
+        };
+
+        for blob in &blob_table.entries {
+            blob_table.extended.add(
+                blob.chunk_count(),
+                blob.uncompressed_size(),
+                blob.compressed_size(),
+            );
+        }
+
+        blob_table
+    }
+}
+
 impl RafsV5BlobTable {
     /// Create a new instance of `RafsV5BlobTable`.
     pub fn new() -> Self {
@@ -1075,7 +1095,7 @@ impl<'a> RafsStore for RafsV5InodeWrapper<'a> {
 
 /// Rafs v5 chunk on disk metadata.
 #[repr(C)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct RafsV5ChunkInfo {
     /// sha256(chunk), [char; RAFS_SHA256_LENGTH]
     pub block_id: RafsDigest, // 32
@@ -1361,7 +1381,7 @@ fn calculate_bio_chunk_index(
     (index_start, index_end)
 }
 
-pub(crate) fn rafsv5_align(size: usize) -> usize {
+pub fn rafsv5_align(size: usize) -> usize {
     if size & (RAFSV5_ALIGNMENT - 1) == 0 {
         size
     } else {

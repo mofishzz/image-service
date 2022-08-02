@@ -3,6 +3,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{self, Display, Formatter, Result as FmtResult};
@@ -1728,7 +1729,7 @@ impl InodeWrapper {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ChunkWrapper {
     V5(RafsV5ChunkInfo),
     // Reuse `RafsV5ChunkInfo` for v6 with a different wrapper to reduce duplicated code.
@@ -1897,7 +1898,7 @@ impl ChunkWrapper {
         Ok(())
     }
 
-    fn copy_from(&mut self, other: &Self) {
+    pub fn copy_from(&mut self, other: &Self) {
         match (self, other) {
             (ChunkWrapper::V5(s), ChunkWrapper::V5(o)) => {
                 s.clone_from(o);

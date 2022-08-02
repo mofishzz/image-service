@@ -118,7 +118,7 @@ pub struct RafsV6SuperBlock {
     /// # of devices besides the primary device.
     s_extra_devices: u16,
     /// Offset of the device table, `startoff = s_devt_slotoff * 128`.
-    s_devt_slotoff: u16,
+    pub s_devt_slotoff: u16,
     /// Padding.
     s_reserved: [u8; 38],
 }
@@ -243,6 +243,11 @@ impl RafsV6SuperBlock {
     /// Set number of extra devices.
     pub fn set_extra_devices(&mut self, count: u16) {
         self.s_extra_devices = count.to_le();
+    }
+
+    /// Set Offset of the device table.
+    pub fn set_devt_slotoff(&mut self, count: u64) {
+        self.s_devt_slotoff = ((count / size_of::<RafsV6Device>() as u64) as u16).to_le();
     }
 
     impl_pub_getter_setter!(magic, set_magic, s_magic, u32);
@@ -1400,6 +1405,12 @@ pub struct RafsV6BlobTable {
     pub entries: Vec<Arc<BlobInfo>>,
 }
 
+impl From<Vec<Arc<BlobInfo>>> for RafsV6BlobTable {
+    fn from(entries: Vec<Arc<BlobInfo>>) -> RafsV6BlobTable {
+        RafsV6BlobTable { entries }
+    }
+}
+
 impl RafsV6BlobTable {
     /// Create a new instance of `RafsV6BlobTable`.
     pub fn new() -> Self {
@@ -1407,6 +1418,12 @@ impl RafsV6BlobTable {
             entries: Vec::new(),
         }
     }
+
+    /*
+    pub fn from(entries: Vec<Arc<BlobInfo>>) -> Self {
+        RafsV6BlobTable { entries }
+    }
+    */
 
     /// Get blob table size.
     pub fn size(&self) -> usize {

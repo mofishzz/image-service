@@ -139,7 +139,7 @@ impl std::io::Write for ArtifactMemoryWriter {
     }
 }
 
-pub struct ArtifactFileWriter(ArtifactWriter);
+pub struct ArtifactFileWriter(pub ArtifactWriter);
 
 impl RafsIoWrite for ArtifactFileWriter {
     fn as_any(&self) -> &dyn Any {

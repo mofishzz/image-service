@@ -19,6 +19,7 @@
 //! - [BlobIoVec](struct.BlobIoVec.html): a scatter/gather list for blob IO operation, containing
 //!   one or more blob IO descriptors
 //! - [BlobPrefetchRequest](struct.BlobPrefetchRequest.html): a blob data prefetching request.
+use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::cmp;
 use std::collections::hash_map::Drain;
@@ -45,6 +46,7 @@ use crate::factory::BLOB_FACTORY;
 static ZEROS: &[u8] = &[0u8; 4096]; // why 4096? volatile slice default size, unfortunately
 
 bitflags! {
+    #[derive(Deserialize, Serialize)]
     /// Features bits for blob management.
     pub struct BlobFeatures: u32 {
         /// Rafs V5 image without extended blob table.
@@ -62,7 +64,7 @@ impl Default for BlobFeatures {
 ///
 /// The `BlobInfo` structure provides information for the storage subsystem to manage a blob file
 /// and serve blob IO requests for clients.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct BlobInfo {
     /// The index of blob in RAFS blob table.
     blob_index: u32,
@@ -104,7 +106,38 @@ pub struct BlobInfo {
     /// V6: Size of the uncompressed chunk information array.
     meta_ci_uncompressed_size: u64,
 
+    #[serde(skip_deserializing, skip_serializing)]
     fs_cache_file: Option<Arc<File>>,
+}
+
+impl From<&Arc<BlobInfo>> for BlobInfo {
+    /// Create a new instance of `RafsV6BlobTable`
+    #[inline]
+    fn from(blob: &Arc<BlobInfo>) -> BlobInfo {
+        BlobInfo {
+            blob_index: blob.blob_index,
+            blob_id: blob.blob_id.to_string(),
+            blob_features: blob.blob_features,
+            uncompressed_size: blob.uncompressed_size,
+            compressed_size: blob.compressed_size,
+            chunk_size: blob.chunk_size,
+            chunk_count: blob.chunk_count,
+
+            compressor: blob.compressor,
+            digester: blob.digester,
+            readahead_offset: blob.readahead_offset,
+            readahead_size: blob.readahead_size,
+            validate_data: blob.validate_data,
+            stargz: blob.stargz,
+            meta_ci_compressor: blob.meta_ci_compressor,
+            meta_flags: blob.meta_flags,
+            meta_ci_offset: blob.meta_ci_offset,
+            meta_ci_compressed_size: blob.meta_ci_compressed_size,
+            meta_ci_uncompressed_size: blob.meta_ci_uncompressed_size,
+
+            fs_cache_file: None,
+        }
+    }
 }
 
 impl BlobInfo {
@@ -341,6 +374,7 @@ impl BlobInfo {
 }
 
 bitflags! {
+    #[derive(Deserialize, Serialize)]
     /// Blob chunk flags.
     pub struct BlobChunkFlags: u32 {
         /// Chunk data is compressed.
