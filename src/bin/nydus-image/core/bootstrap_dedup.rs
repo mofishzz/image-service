@@ -115,10 +115,16 @@ impl BootstrapDedup {
         build_ctx: &BuildContext,
         blob_mgr: &mut BlobManager,
     ) -> Result<()> {
+        let mut chunk_cnt = 0;
+        let mut chunk_size_cnt = 0;
+        let mut new_chunk_cnt = 0;
+        let mut new_chunk_size_cnt = 0;
         for node in nodes {
             let (mut chunk_ofs, chunk_size) = self.get_chunk_ofs(&node)?;
 
             for chunk in &node.chunks {
+                chunk_cnt += 1;
+                chunk_size_cnt += chunk.inner.uncompressed_size();
                 let chunk_id = chunk.inner.id();
                 let blob_id = blob_mgr
                     .get_blob_id_by_idx(chunk.inner.blob_index() as usize)
@@ -154,6 +160,8 @@ impl BootstrapDedup {
                             self.cache_chunks.insert(*chunk_id, new_chunk);
                         }
                         None => {
+                            new_chunk_cnt += 1;
+                            new_chunk_size_cnt += chunk.inner.uncompressed_size();
                             self.cache_chunks.insert(*chunk_id, chunk.inner.clone());
                             //insert db
                             let chunk_info = serde_json::to_string(&chunk.inner).unwrap();
@@ -166,7 +174,13 @@ impl BootstrapDedup {
                 chunk_ofs += chunk_size;
             }
         }
-
+        info!(
+            "chunk count={} size={} dedup count={} size={}",
+            chunk_cnt,
+            chunk_size_cnt,
+            chunk_cnt - new_chunk_cnt,
+            chunk_size_cnt - new_chunk_size_cnt
+        );
         Ok(())
     }
 
